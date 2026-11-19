@@ -1,6 +1,6 @@
 {
   "name": "dsh-mcp-toggles",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Switch existing MCP loader rows on or off from DeepSeek Harness Settings, editing only that row's disabled line and leaving the rest of the profile patch byte-for-byte intact.",
   "keywords": [

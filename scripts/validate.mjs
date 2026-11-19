@@ -160,7 +160,9 @@ check(Boolean(idMatch) && idMatch[1] === pkg.name, `client.js id equals the pack
 /* ── nothing binary sneaks in ─────────────────────────────────────────── */
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', '.tools', '.profiles']);
-const FORBIDDEN = /\.(png|jpe?g|webp|gif|ico|zip|tgz|tar|gz|bak|webm|mp4|woff2?)$/i;
+const FORBIDDEN = /\.(jpe?g|webp|gif|ico|zip|tgz|tar|gz|bak|webm|mp4|woff2?)$/i;
+const ALLOWED_IMAGE = /^docs\/screenshot(-[a-z]+)?(\.[a-z]{2})?\.png$/;
+const IMAGE_BUDGET = 400 * 1024;
 
 function walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -169,11 +171,28 @@ function walk(dir) {
       walk(path.join(dir, entry.name));
       continue;
     }
-    const rel = path.relative(ROOT, path.join(dir, entry.name)).replace(/\\/g, '/');
+    const full = path.join(dir, entry.name);
+    const rel = path.relative(ROOT, full).replace(/\\/g, '/');
+    if (/\.png$/i.test(rel)) {
+      check(ALLOWED_IMAGE.test(rel), `only docs/screenshot*.png may be committed: ${rel}`);
+      if (ALLOWED_IMAGE.test(rel)) {
+        check(fs.statSync(full).size <= IMAGE_BUDGET, `${rel} is under ${IMAGE_BUDGET / 1024} KiB`);
+      }
+      continue;
+    }
     if (FORBIDDEN.test(rel)) check(false, `binary or build artifact in the tree: ${rel}`);
   }
 }
 walk(ROOT);
+
+/* ── images referenced by the READMEs exist ───────────────────────────── */
+
+for (const readme of ['README.md', 'README.en.md']) {
+  if (!exists(readme)) continue;
+  for (const match of read(readme).matchAll(/!\[[^\]]*\]\((docs\/[^)\s]+)\)/g)) {
+    check(exists(match[1]), `${readme} references an existing image: ${match[1]}`);
+  }
+}
 
 /* ── result ───────────────────────────────────────────────────────────── */
 

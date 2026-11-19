@@ -7,7 +7,9 @@ English | [中文](README.md)
 
 ![CI](https://github.com/Echo-Li130/dsh-mcp-toggles/actions/workflows/ci.yml/badge.svg)
 
-![Three connector rows, each with a switch; the last one is switched off](docs/preview.svg)
+![The MCP connector toggles page: three example servers, two on and one off](docs/screenshot-toggles.en.png)
+
+> Screenshot of the real page; the data is an example — no local path or credential appears here.
 
 ## What it does
 
@@ -71,7 +73,7 @@ Or in the UI: **Plugins → Add plugin → pick this directory**.
 
 ```sh
 npm pack
-dsh plugin --profile <profile> add ./dsh-mcp-toggles-1.0.0.tgz
+dsh plugin --profile <profile> add ./dsh-mcp-toggles-<version>.tgz
 ```
 
 Reload the page and the entry is in **Settings**.

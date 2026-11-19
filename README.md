@@ -7,7 +7,9 @@
 
 ![CI](https://github.com/Echo-Li130/dsh-mcp-toggles/actions/workflows/ci.yml/badge.svg)
 
-![三行连接器条目，每行一个开关，最后一行已关闭](docs/preview.svg)
+![MCP 连接器页面：三行示例服务器，两个已启用、一个已停用](docs/screenshot-toggles.png)
+
+> 界面实拍；数据为示例，不含任何本机路径或凭据。
 
 ## 它是什么
 
@@ -68,7 +70,7 @@ dsh plugin --profile <profile> add /path/to/dsh-mcp-toggles
 
 ```sh
 npm pack
-dsh plugin --profile <profile> add ./dsh-mcp-toggles-1.0.0.tgz
+dsh plugin --profile <profile> add ./dsh-mcp-toggles-<version>.tgz
 ```
 
 装完刷新页面，「设置」里就会出现 **MCP 连接器**。

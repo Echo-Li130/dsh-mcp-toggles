@@ -63,6 +63,9 @@ function walk(dir) {
 
     let text = '';
     try {
+      // Raster images are reviewed as images, not as text: reading a PNG as
+      // UTF-8 would only produce noise, never a meaningful finding.
+      if (/\.(png|jpe?g|webp|gif)$/i.test(rel)) continue;
       text = fs.readFileSync(full, 'utf8');
     } catch {
       continue;
