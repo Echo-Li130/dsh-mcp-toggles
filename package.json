@@ -43,7 +43,7 @@
     "icon.svg"
   ],
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test test/patch.test.mjs test/http.test.mjs",
     "validate": "node scripts/validate.mjs",
     "privacy-check": "node scripts/privacy-check.mjs",
     "prepack": "node scripts/validate.mjs"

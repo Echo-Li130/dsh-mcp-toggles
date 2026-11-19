@@ -111,7 +111,7 @@ http://127.0.0.1:<DSH 端口>/mcp-toggles
 ## 开发
 
 ```sh
-node --test test/          # 单元测试：补丁解析、HTTP 处理器
+npm test                   # 单元测试：补丁解析、HTTP 处理器
 node scripts/validate.mjs  # 清单、资源、详情文档、打包内容
 node scripts/privacy-check.mjs
 ```

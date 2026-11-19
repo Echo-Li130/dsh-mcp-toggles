@@ -122,7 +122,7 @@ full managers instead.
 ## Development
 
 ```sh
-node --test test/          # unit tests: patch parsing and HTTP handlers
+npm test                   # unit tests: patch parsing and HTTP handlers
 node scripts/validate.mjs  # manifest, assets, detail docs, package contents
 node scripts/privacy-check.mjs
 ```
