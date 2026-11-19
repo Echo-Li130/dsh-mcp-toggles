@@ -1,0 +1,65 @@
+{
+  "name": "dsh-mcp-toggles",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Switch existing MCP loader rows on or off from DeepSeek Harness Settings, editing only that row's disabled line and leaving the rest of the profile patch byte-for-byte intact.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "mcp",
+    "settings",
+    "toggle"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Echo-Li130/dsh-mcp-toggles.git"
+  },
+  "homepage": "https://github.com/Echo-Li130/dsh-mcp-toggles#readme",
+  "bugs": {
+    "url": "https://github.com/Echo-Li130/dsh-mcp-toggles/issues"
+  },
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.0-0 <0.3.0-0"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "index.js",
+    "src",
+    "client.js",
+    "cordis.patch.yml",
+    "public",
+    "locale/*.json",
+    "docs",
+    "icon.svg"
+  ],
+  "scripts": {
+    "test": "node --test test/",
+    "validate": "node scripts/validate.mjs",
+    "privacy-check": "node scripts/privacy-check.mjs",
+    "prepack": "node scripts/validate.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-theme"
+      ]
+    }
+  }
+}

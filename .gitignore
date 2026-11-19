@@ -1,0 +1,19 @@
+node_modules/
+.pnpm-store/
+
+# Local backups and package output
+*.bak
+*.tmp-*
+*.tgz
+
+# Local configuration that may hold credentials
+.env
+config.json
+
+# Tooling and editor leftovers
+.tools/
+.profiles/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

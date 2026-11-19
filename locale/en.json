@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "MCP connector toggles",
+    "description": "Turn existing MCP servers on or off from Settings → MCP connector toggles. Each switch edits only that row's disabled field in your profile patch — one line is inserted when turning it off and removed when turning it back on, while every other byte of the file stays untouched — and the change applies through hot reload in about two seconds. Only `- id: mcp-*` loader rows in that one file are listed, not `mcp-manager`'s `servers` map or patch layers shipped by other bundles. It makes no network requests and never reads credentials. While a server is off, its tools leave the model's tool list.",
+    "detail": "docs/DETAIL.md"
+  }
+}

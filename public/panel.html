@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCP connector toggles</title>
+  <style>
+    :root { --bg:#0f1115; --panel:#171a21; --border:#262a33; --text:#e6e8ee; --muted:#8b93a7; --ok:#2ecc71; --off:#6b7280; --bad:#ff5c5c; }
+    * { box-sizing: border-box; }
+    body { margin:0; padding:24px; background:var(--bg); color:var(--text); font-family: system-ui,-apple-system,"Segoe UI",sans-serif; }
+    h1 { font-size:19px; margin:0 0 6px; }
+    .hint { color:var(--muted); font-size:12px; line-height:1.8; margin-bottom:12px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+    th { color:var(--muted); font-size:12px; }
+    tr:last-child td { border-bottom:none; }
+    .mono { font-family:ui-monospace,Consolas,monospace; font-size:12px; word-break:break-all; color:#c8d0e0; }
+    .sw { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+    .track { width:38px; height:20px; border-radius:999px; background:#3a4150; position:relative; transition:background .15s; }
+    .track.on { background:var(--ok); }
+    .knob { position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left .15s; }
+    .track.on .knob { left:20px; }
+    .state { font-size:12px; color:var(--muted); }
+    .err { margin:10px 0; padding:8px 10px; border-radius:6px; font-size:12px; background:rgba(255,92,92,.12); color:var(--bad); }
+    .empty { color:var(--muted); padding:14px 4px; font-size:13px; }
+  </style>
+</head>
+<body>
+  <h1 id="title">MCP connector toggles</h1>
+  <div class="hint" id="hint"></div>
+  <div class="hint" id="scope"></div>
+  <div class="mono" id="cfg" style="margin-bottom:12px"></div>
+  <div class="panel">
+    <div id="err" class="err" style="display:none"></div>
+    <div id="note" class="hint" style="display:none"></div>
+    <table>
+      <thead><tr>
+        <th style="width:170px" id="colConnector">Connector</th>
+        <th style="width:80px" id="colTransport">Transport</th>
+        <th id="colCommand">Command</th>
+        <th style="width:120px" id="colSwitch">Switch</th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+<script>
+const zh = String(navigator.language || '').toLowerCase().startsWith('zh');
+const TEXT = zh ? {
+  title: 'MCP 连接器',
+  hint: '开关只改这一行 MCP 服务器在 profile 补丁里的挂载状态：停用时插入一行 disabled: true，启用时把那行删掉，文件其余内容逐字节不动。改动经热重载约 2 秒生效。',
+  scope: '只列出写在这个文件里的 - id: mcp-* 行；mcp-manager 的 servers 映射与其他补丁层不在此列。',
+  colConnector: '连接器', colTransport: '传输', colCommand: '启动命令', colSwitch: '开关',
+  enabled: '已启用', disabled: '已停用', loading: '加载中…', empty: '没有解析到 MCP 连接器。',
+  failed: '失败', offNote: '已停用 {name}，约 2 秒生效', onNote: '已启用 {name}，约 2 秒生效',
+} : {
+  title: 'MCP connector toggles',
+  hint: 'A switch changes only how this MCP server is mounted in your profile patch: off inserts one `disabled: true` line, on removes it, and every other byte stays untouched. Applies through hot reload in about two seconds.',
+  scope: 'Only `- id: mcp-*` rows written in this file are listed; `mcp-manager`\u2019s `servers` map and other patch layers are not included.',
+  colConnector: 'Connector', colTransport: 'Transport', colCommand: 'Command', colSwitch: 'Switch',
+  enabled: 'On', disabled: 'Off', loading: 'Loading…', empty: 'No MCP connectors were found.',
+  failed: 'Failed', offNote: '{name} turned off; applies in about two seconds', onNote: '{name} turned on; applies in about two seconds',
+};
+
+document.documentElement.lang = zh ? 'zh-CN' : 'en';
+document.title = TEXT.title;
+document.getElementById('title').textContent = TEXT.title;
+document.getElementById('hint').textContent = TEXT.hint;
+document.getElementById('scope').textContent = TEXT.scope;
+document.getElementById('colConnector').textContent = TEXT.colConnector;
+document.getElementById('colTransport').textContent = TEXT.colTransport;
+document.getElementById('colCommand').textContent = TEXT.colCommand;
+document.getElementById('colSwitch').textContent = TEXT.colSwitch;
+
+const esc = (value) => String(value == null ? '' : value).replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+const format = (text, values) => text.replace(/\{(\w+)\}/g, (whole, key) => (key in values ? String(values[key]) : whole));
+const busy = {};
+
+async function load() {
+  try {
+    const res = await fetch('/api/mcp-toggles/servers', { cache: 'no-store' });
+    const body = await res.json();
+    if (!body.ok) throw new Error(body.error || TEXT.failed);
+    document.getElementById('err').style.display = 'none';
+    document.getElementById('cfg').textContent = body.configPath || '';
+    const rows = document.getElementById('rows');
+    if (!body.servers.length) {
+      rows.innerHTML = '<tr><td colspan="4" class="empty">' + esc(TEXT.empty) + '</td></tr>';
+      return;
+    }
+    rows.innerHTML = body.servers.map((s) => `
+      <tr>
+        <td><strong>${esc(s.name)}</strong><div class="mono" style="color:var(--muted)">${esc(s.id)}</div></td>
+        <td><code>${esc(s.transport)}</code></td>
+        <td class="mono">${esc([s.command, ...(s.args||[])].filter(Boolean).join(' '))}</td>
+        <td>
+          <span class="sw" role="switch" aria-checked="${s.disabled ? 'false' : 'true'}" data-id="${esc(s.id)}" data-disabled="${s.disabled ? '1' : '0'}">
+            <span class="track ${s.disabled ? '' : 'on'}"><span class="knob"></span></span>
+            <span class="state">${esc(s.disabled ? TEXT.disabled : TEXT.enabled)}</span>
+          </span>
+        </td>
+      </tr>`).join('');
+    rows.querySelectorAll('.sw').forEach((el) => {
+      el.addEventListener('click', () => toggle(el.dataset.id, el.dataset.disabled !== '1'));
+    });
+  } catch (error) {
+    const box = document.getElementById('err');
+    box.style.display = '';
+    box.textContent = TEXT.failed + ': ' + error.message;
+  }
+}
+
+async function toggle(id, currentlyDisabled) {
+  if (busy[id]) return;
+  busy[id] = true;
+  const nextDisabled = !currentlyDisabled;
+  try {
+    const res = await fetch('/api/mcp-toggles/toggle', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, disabled: nextDisabled }),
+    });
+    const body = await res.json();
+    if (!body.ok) throw new Error(body.error || TEXT.failed);
+    const note = document.getElementById('note');
+    note.style.display = '';
+    note.textContent = format(nextDisabled ? TEXT.offNote : TEXT.onNote, { name: (body.server && body.server.name) || id });
+    await load();
+  } catch (error) {
+    const box = document.getElementById('err');
+    box.style.display = '';
+    box.textContent = TEXT.failed + ': ' + error.message;
+  } finally {
+    busy[id] = false;
+  }
+}
+
+load();
+setInterval(() => { if (!document.hidden) load(); }, 10000);
+window.addEventListener('focus', () => { if (!document.hidden) load(); });
+</script>
+</body>
+</html>
