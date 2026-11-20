@@ -89,10 +89,35 @@ test('toggle requires a JSON content type', async () => {
   assert.equal(res.statusCode, 415);
 });
 
+test('toggle refuses an mcp-* row that is not the MCP client without echoing the file', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-toggles-refuse-'));
+  const file = path.join(dir, 'cordis.patch.yml');
+  const original = "- id: mcp-toggles\n  config:\n    descriptions:\n      example: '示例'\n";
+  fs.writeFileSync(file, original, 'utf8');
+
+  const handlers = createHandlers({ findConfigPath: () => file, serial: (task) => task(), panelFile: '' });
+  const res = fakeResponse();
+  await handlers.toggle(
+    fakeRequest({
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'mcp-toggles', disabled: true }),
+    }),
+    res,
+  );
+  assert.equal(res.statusCode, 400);
+  const body = json(res);
+  assert.match(body.error, /not an MCP client row/);
+  assert.equal('text' in body, false);
+  assert.equal(fs.readFileSync(file, 'utf8'), original);
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test('toggle round-trips a real file and keeps a backup', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-toggles-'));
   const file = path.join(dir, 'cordis.patch.yml');
-  const original = '- id: mcp-example\n  serverName: example\n  transport: stdio\n';
+  const original = "- id: mcp-example\n  name: '@deepseek-ai/dsh-mcp-client'\n  serverName: example\n  transport: stdio\n";
   fs.writeFileSync(file, original, 'utf8');
 
   const handlers = createHandlers({ findConfigPath: () => file, serial: (task) => task(), panelFile: '' });
@@ -129,6 +154,32 @@ test('toggle round-trips a real file and keeps a backup', async () => {
   assert.equal(listing.statusCode, 200);
   assert.equal(json(listing).servers.length, 1);
   assert.equal(json(listing).configPath, file);
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('list merges the injected introduction and tool summary into each row', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-toggles-describe-'));
+  const file = path.join(dir, 'cordis.patch.yml');
+  fs.writeFileSync(file, "- id: mcp-example\n  name: '@deepseek-ai/dsh-mcp-client'\n  serverName: example\n  transport: stdio\n", 'utf8');
+
+  const handlers = createHandlers({
+    findConfigPath: () => file,
+    serial: (task) => task(),
+    panelFile: '',
+    enrich: (server) => ({
+      description: server.name === 'example' ? '示例：一句话说明' : '',
+      tools: { count: 2, names: ['open', 'close'] },
+    }),
+  });
+
+  const listing = fakeResponse();
+  await handlers.list(fakeRequest(), listing);
+  assert.equal(listing.statusCode, 200);
+  const [server] = json(listing).servers;
+  assert.equal(server.description, '示例：一句话说明');
+  assert.deepEqual(server.tools, { count: 2, names: ['open', 'close'] });
+  assert.equal(server.disabled, false);
 
   fs.rmSync(dir, { recursive: true, force: true });
 });

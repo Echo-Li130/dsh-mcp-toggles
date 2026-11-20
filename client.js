@@ -1,8 +1,10 @@
 /**
  * dsh-mcp-toggles — browser half.
  *
- * Adds one page to Settings ("MCP connector toggles"): every `mcp-*` loader row
- * of the profile patch, each with an on/off switch.
+ * Adds one global panel ("MCP connector toggles") to the sidebar, directly
+ * between Plugins and Automation tasks, and the page it opens: every `mcp-*`
+ * loader row of the profile patch, each with a one-line introduction (from the
+ * plugin's `config.descriptions`) and an on/off switch.
  *
  * React comes from the page's module table; styles are inline and use only the
  * host's `--dsw-alias-*` tokens, so no Harness client package is required at
@@ -15,87 +17,129 @@ window.__ModuleLoader__.load({
     const h = React.createElement;
 
     const NS = 'mcpToggles';
+    const PANEL_ID = 'mcp-toggles';
     const API = { list: '/api/mcp-toggles/servers', toggle: '/api/mcp-toggles/toggle' };
 
     const DICT = {
       zh: {
         nav: 'MCP 连接器',
         heading: 'MCP 连接器',
+        pageIntro: '管理当前 profile 里的 MCP 服务器。开关只改对应 loader 行的 disabled 字段，文件其余内容逐字节不动，改动约 2 秒后热重载生效。',
         refresh: '刷新',
         loading: '加载中…',
         empty: '没有解析到 MCP 连接器。',
-        columnConnector: '连接器',
-        columnTransport: '传输',
-        columnCommand: '启动命令',
-        columnSwitch: '开关',
-        enabled: '已启用',
-        disabled: '已停用',
+        scope: '只列出写在受管文件里的 - id: mcp-* 行；mcp-manager 的 servers 映射与其他补丁层不在此列。',
         lastFile: '受管文件',
-        hint: '开关只改这一行 MCP 服务器在 profile 补丁里的挂载状态：停用时插入一行 disabled: true，启用时把那行删掉，文件其余内容逐字节不动。改动经热重载约 2 秒生效，停用后该服务器的工具会从模型工具列表消失。',
-        scope: '只列出写在这个文件里的 - id: mcp-* 行。mcp-manager 的 servers 映射、其他插件 bundle 自带的补丁层都不在此列。',
         loadFailed: '读取失败',
         toggleFailed: '切换失败',
+        enabled: '已启用',
+        disabled: '已停用',
         disabledNote: '已停用 {name}，约 2 秒生效',
         enabledNote: '已启用 {name}，约 2 秒生效',
+        toolsCount: '{count} 个工具',
+        noTools: '暂无工具（未连接或启动中）',
+        unknownIntro: '外部 MCP 服务器「{name}」：通过 {transport} 连接。可在 profile 补丁里为它补一句中文简介。',
       },
       en: {
         nav: 'MCP connector toggles',
         heading: 'MCP connector toggles',
+        pageIntro: 'Manage the MCP servers of this profile. A switch changes only that row\u2019s disabled field; every other byte of the file stays untouched, and the change applies through hot reload in about two seconds.',
         refresh: 'Refresh',
         loading: 'Loading…',
         empty: 'No MCP connectors were found.',
-        columnConnector: 'Connector',
-        columnTransport: 'Transport',
-        columnCommand: 'Command',
-        columnSwitch: 'Switch',
-        enabled: 'On',
-        disabled: 'Off',
+        scope: 'Only - id: mcp-* rows written in the managed file are listed. mcp-manager\u2019s servers map and patch layers shipped by other bundles are not included.',
         lastFile: 'Managed file',
-        hint: 'A switch changes only how this MCP server is mounted in your profile patch: turning it off inserts one disabled: true line, turning it back on removes that line, and every other byte of the file stays untouched. The change applies through hot reload in about two seconds, and a disabled server\u2019s tools leave the model\u2019s tool list.',
-        scope: 'Only - id: mcp-* rows written in that one file are listed. mcp-manager\u2019s servers map and patch layers shipped by other bundles are not included.',
         loadFailed: 'Could not load',
         toggleFailed: 'Could not switch',
+        enabled: 'On',
+        disabled: 'Off',
         disabledNote: '{name} turned off; applies in about two seconds',
         enabledNote: '{name} turned on; applies in about two seconds',
+        toolsCount: '{count} tools',
+        noTools: 'No tools yet (connecting or starting)',
+        unknownIntro: 'External MCP server "{name}" over {transport}. Add a one-line intro for it in the profile patch.',
       },
     };
 
+    const MONO = 'ui-monospace, Consolas, monospace';
     const style = {
-      page: { padding: '4px 2px 24px', fontFamily: 'inherit', color: 'var(--dsw-alias-text-primary, #e6e8ee)' },
-      header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 },
-      heading: { fontSize: 15, fontWeight: 600, margin: 0 },
+      page: {
+        height: '100%',
+        boxSizing: 'border-box',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        fontFamily: 'inherit',
+        color: 'var(--dsw-alias-label-primary, #e6e8ee)',
+        // Matches the host's entry pages: the top strip stays clear of window chrome.
+        padding: 'calc(28px + var(--dsh-frame-top-clearance, 0px)) clamp(20px, 4vw, 48px) 48px',
+      },
+      inner: { width: '100%', maxWidth: 960, margin: '0 auto', boxSizing: 'border-box' },
+      head: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 8 },
+      title: { margin: 0, fontSize: 20, fontWeight: 500, lineHeight: '28px' },
+      intro: { margin: '4px 0 0', fontSize: 13, lineHeight: '20px', color: 'var(--dsw-alias-label-secondary, #8b93a7)' },
       button: {
-        border: '1px solid var(--dsw-alias-border-secondary, #3a4150)',
+        flex: '0 0 auto',
+        border: '1px solid var(--dsw-alias-border-l2, #3a4150)',
         background: 'transparent',
         color: 'inherit',
         borderRadius: 6,
-        padding: '4px 10px',
+        padding: '5px 12px',
         fontSize: 12,
+        lineHeight: '18px',
         cursor: 'pointer',
       },
-      hint: { fontSize: 12, lineHeight: 1.8, color: 'var(--dsw-alias-text-secondary, #8b93a7)', marginBottom: 10 },
-      table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
-      th: {
-        textAlign: 'left',
-        padding: '8px 10px',
+      fileLine: {
+        margin: '18px 0 0',
+        fontFamily: MONO,
         fontSize: 12,
-        fontWeight: 600,
-        color: 'var(--dsw-alias-text-secondary, #8b93a7)',
-        borderBottom: '1px solid var(--dsw-alias-border-secondary, #262a33)',
+        lineHeight: '18px',
+        color: 'var(--dsw-alias-label-tertiary, #8b93a7)',
+        wordBreak: 'break-all',
       },
-      td: {
-        padding: '10px',
-        verticalAlign: 'top',
-        borderBottom: '1px solid var(--dsw-alias-border-secondary, #262a33)',
+      scope: { margin: '4px 0 18px', fontSize: 12, lineHeight: '18px', color: 'var(--dsw-alias-label-tertiary, #8b93a7)' },
+      list: { display: 'flex', flexDirection: 'column', gap: 10 },
+      card: (off) => ({
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 16,
+        padding: '14px 16px',
+        borderRadius: 10,
+        border: '1px solid var(--dsw-alias-border-l2, #2a2f3a)',
+        background: 'var(--dsw-alias-bg-layer-1, rgba(255,255,255,.03))',
+        opacity: off ? 0.66 : 1,
+      }),
+      cardMain: { flex: 1, minWidth: 0 },
+      nameRow: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap' },
+      dot: (off) => ({
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        flex: '0 0 auto',
+        background: off
+          ? 'var(--dsw-alias-label-tertiary, #6b7280)'
+          : 'var(--dsw-alias-state-success-primary, #2ecc71)',
+      }),
+      name: { fontSize: 14, fontWeight: 600, lineHeight: '20px' },
+      id: { fontFamily: MONO, fontSize: 12, lineHeight: '18px', color: 'var(--dsw-alias-label-tertiary, #8b93a7)' },
+      desc: { margin: '6px 0 0', fontSize: 13, lineHeight: '20px', color: 'var(--dsw-alias-label-secondary, #8b93a7)' },
+      meta: { margin: '6px 0 0', fontSize: 12, lineHeight: '18px', color: 'var(--dsw-alias-label-tertiary, #8b93a7)' },
+      switchWrap: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 2,
+        flex: '0 0 auto',
+        cursor: 'pointer',
+        userSelect: 'none',
       },
-      mono: { fontFamily: 'ui-monospace, Consolas, monospace', fontSize: 12, wordBreak: 'break-all' },
-      dot: { display: 'inline-block', width: 8, height: 8, borderRadius: '50%', marginRight: 6 },
-      switchWrap: { display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' },
       track: (on) => ({
         width: 38,
         height: 20,
         borderRadius: 999,
-        background: on ? 'var(--dsw-alias-state-success-primary, #2ecc71)' : 'var(--dsw-alias-border-secondary, #3a4150)',
+        background: on
+          ? 'var(--dsw-alias-state-success-primary, #2ecc71)'
+          : 'var(--dsw-alias-border-l3, #3a4150)',
         position: 'relative',
         transition: 'background .15s ease',
         flex: '0 0 auto',
@@ -111,14 +155,16 @@ window.__ModuleLoader__.load({
         transition: 'left .15s ease',
       }),
       err: {
-        margin: '10px 0',
+        margin: '12px 0 0',
         padding: '8px 10px',
         borderRadius: 6,
         fontSize: 12,
+        lineHeight: '18px',
         background: 'rgba(255,92,92,.12)',
         color: 'var(--dsw-alias-state-error-primary, #ff5c5c)',
       },
-      empty: { padding: '16px 4px', color: 'var(--dsw-alias-text-secondary, #8b93a7)', fontSize: 13 },
+      note: { margin: '12px 0 0', fontSize: 12, lineHeight: '18px', color: 'var(--dsw-alias-label-secondary, #8b93a7)' },
+      empty: { padding: '18px 4px', color: 'var(--dsw-alias-label-secondary, #8b93a7)', fontSize: 13 },
     };
 
     function format(text, values) {
@@ -148,7 +194,7 @@ window.__ModuleLoader__.load({
           },
         },
         h('span', { style: style.track(on) }, h('span', { style: style.knob(on) })),
-        h('span', { style: { fontSize: 12, color: 'var(--dsw-alias-text-secondary, #8b93a7)' } }, label),
+        h('span', { style: { fontSize: 12, color: 'var(--dsw-alias-label-secondary, #8b93a7)' } }, label),
       );
     }
 
@@ -170,7 +216,12 @@ window.__ModuleLoader__.load({
           const res = await fetch(API.list, { cache: 'no-store' });
           const body = await res.json();
           if (!body.ok) throw new Error(body.error || t('loadFailed'));
-          setState({ loading: false, servers: body.servers || [], configPath: body.configPath || '', error: '' });
+          setState({
+            loading: false,
+            servers: Array.isArray(body.servers) ? body.servers : [],
+            configPath: body.configPath || '',
+            error: '',
+          });
         } catch (error) {
           setState((current) => ({ ...current, loading: false, error: String((error && error.message) || error) }));
         }
@@ -232,103 +283,95 @@ window.__ModuleLoader__.load({
         }
       };
 
+      const card = (server) => {
+        const off = server.disabled === true;
+        const tools = server.tools && typeof server.tools === 'object' ? server.tools : { count: 0 };
+        const intro = server.description
+          ? server.description
+          : format(t('unknownIntro'), { name: server.name, transport: server.transport || 'stdio' });
+        const toolText = typeof tools.count === 'number' && tools.count > 0
+          ? format(t('toolsCount'), { count: tools.count })
+          : t('noTools');
+        const meta = [server.transport || 'stdio', off ? t('disabled') : toolText].join(' · ');
+        return h(
+          'div',
+          { key: server.id, style: style.card(off) },
+          h(
+            'div',
+            { style: style.cardMain },
+            h(
+              'div',
+              { style: style.nameRow },
+              h('span', { style: style.dot(off), 'aria-hidden': true }),
+              h('span', { style: style.name }, server.name),
+              h('span', { style: style.id }, server.id),
+            ),
+            h('div', { style: style.desc }, intro),
+            h('div', { style: style.meta }, meta),
+          ),
+          h(Switch, {
+            on: !off,
+            busy: !!busy[server.id],
+            label: off ? t('disabled') : t('enabled'),
+            onChange: (nextOn) => toggle(server, !nextOn),
+          }),
+        );
+      };
+
       return h(
         'div',
         { style: style.page },
         h(
           'div',
-          { style: style.header },
-          h('h2', { style: style.heading }, t('heading')),
-          h('button', { type: 'button', style: style.button, onClick: load }, t('refresh')),
-        ),
-        h('div', { style: style.hint }, t('hint')),
-        h('div', { style: style.hint }, t('scope')),
-        state.configPath
-          ? h(
+          { style: style.inner },
+          h(
+            'div',
+            { style: style.head },
+            h(
               'div',
-              { style: { ...style.mono, color: 'var(--dsw-alias-text-secondary, #8b93a7)', marginBottom: 12 } },
-              t('lastFile') + ': ' + state.configPath,
-            )
-          : null,
-        state.error ? h('div', { style: style.err }, state.error) : null,
-        note ? h('div', { style: { ...style.hint, marginBottom: 8 } }, note) : null,
-        state.loading
-          ? h('div', { style: style.empty }, t('loading'))
-          : state.servers.length === 0
-            ? h('div', { style: style.empty }, t('empty'))
-            : h(
-                'table',
-                { style: style.table },
-                h(
-                  'thead',
-                  null,
-                  h(
-                    'tr',
-                    null,
-                    h('th', { style: { ...style.th, width: 160 } }, t('columnConnector')),
-                    h('th', { style: { ...style.th, width: 80 } }, t('columnTransport')),
-                    h('th', { style: style.th }, t('columnCommand')),
-                    h('th', { style: { ...style.th, width: 120 } }, t('columnSwitch')),
-                  ),
-                ),
-                h(
-                  'tbody',
-                  null,
-                  state.servers.map((server) =>
-                    h(
-                      'tr',
-                      { key: server.id },
-                      h(
-                        'td',
-                        { style: style.td },
-                        h(
-                          'div',
-                          { style: { display: 'flex', alignItems: 'center', gap: 6 } },
-                          h('span', {
-                            style: {
-                              ...style.dot,
-                              background: server.disabled
-                                ? 'var(--dsw-alias-text-secondary, #6b7280)'
-                                : 'var(--dsw-alias-state-success-primary, #2ecc71)',
-                            },
-                          }),
-                          h('strong', null, server.name),
-                        ),
-                        h(
-                          'div',
-                          { style: { ...style.mono, color: 'var(--dsw-alias-text-secondary, #8b93a7)' } },
-                          server.id,
-                        ),
-                      ),
-                      h('td', { style: { ...style.td, whiteSpace: 'nowrap' } }, h('code', null, server.transport)),
-                      h(
-                        'td',
-                        { style: { ...style.td, ...style.mono } },
-                        [server.command].concat(server.args || []).filter(Boolean).join(' '),
-                      ),
-                      h(
-                        'td',
-                        { style: style.td },
-                        h(Switch, {
-                          on: !server.disabled,
-                          busy: !!busy[server.id],
-                          label: server.disabled ? t('disabled') : t('enabled'),
-                          onChange: (nextOn) => toggle(server, !nextOn),
-                        }),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              { style: { minWidth: 0 } },
+              h('h1', { style: style.title }, t('heading')),
+              h('p', { style: style.intro }, t('pageIntro')),
+            ),
+            h('button', { type: 'button', style: style.button, onClick: load }, t('refresh')),
+          ),
+          state.configPath
+            ? h('div', { style: style.fileLine }, t('lastFile') + ': ' + state.configPath)
+            : null,
+          h('div', { style: style.scope }, t('scope')),
+          state.error ? h('div', { style: style.err }, state.error) : null,
+          note ? h('div', { style: style.note }, note) : null,
+          state.loading
+            ? h('div', { style: style.empty }, t('loading'))
+            : state.servers.length === 0
+              ? h('div', { style: style.empty }, t('empty'))
+              : h('div', { style: style.list }, state.servers.map(card)),
+        ),
       );
     }
 
+    /** Monochrome plug glyph: the sidebar owns the row, label, and selected state. */
     function McpTogglesIcon({ size = 16 }) {
       return h(
         'svg',
-        { width: size, height: size, viewBox: '0 0 24 24', 'aria-hidden': true, style: { display: 'block' } },
-        h('rect', { x: 2, y: 7, width: 20, height: 10, rx: 5, fill: '#3d7dfa' }),
-        h('circle', { cx: 16, cy: 12, r: 3.6, fill: '#fff' }),
+        {
+          width: size,
+          height: size,
+          viewBox: '0 0 16 16',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.3,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          'aria-hidden': true,
+          focusable: 'false',
+          style: { display: 'block' },
+        },
+        h('rect', { x: 2.4, y: 5.2, width: 6.8, height: 5.6, rx: 1.6 }),
+        h('path', { d: 'M9.2 8h2.2a1.8 1.8 0 0 0 0-3.6h-1.6' }),
+        h('path', { d: 'M4.5 5.2V3.4' }),
+        h('path', { d: 'M7.1 5.2V3.4' }),
+        h('path', { d: 'M5.8 10.8V12a1.4 1.4 0 0 0 1.4 1.4h2' }),
       );
     }
 
@@ -346,14 +389,18 @@ window.__ModuleLoader__.load({
           else register();
         };
 
+        // The page is a global panel: it belongs to the profile, not a Session.
         contribute(
-          'settings.section',
-          { id: 'mcp-toggles', order: 41, label: () => t('nav'), locale: NS, inject: () => ({ ctx, t }) },
+          'main',
+          { key: PANEL_ID, locale: NS, inject: () => ({ ctx, t }) },
           McpTogglesPage,
         );
 
-        contribute('settings.section.icon', { id: 'mcp-toggles' }, (owner = {}) =>
-          h(McpTogglesIcon, { size: owner.size == null ? 16 : owner.size }),
+        // order 5 sits between Plugins (0) and Automation tasks (10).
+        contribute(
+          'sidebar.panellist',
+          { id: PANEL_ID, order: 5, label: () => t('nav'), locale: NS },
+          McpTogglesIcon,
         );
       },
     };

@@ -1,4 +1,4 @@
-# dsh-mcp-toggles: adds the "MCP connector toggles" page to Settings.
+# dsh-mcp-toggles: adds the "MCP connector toggles" panel to the left sidebar.
 - insert:
     - id: mcp-toggles
       name: 'dsh-mcp-toggles'

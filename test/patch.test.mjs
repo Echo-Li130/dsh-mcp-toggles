@@ -82,8 +82,26 @@ test('readServers never exposes env or credentials', () => {
 });
 
 test('a commented-out row is not listed', () => {
-  const text = '- id: mcp-real\n  transport: stdio\n# - id: mcp-commented\n';
+  const text = "- id: mcp-real\n  name: '@deepseek-ai/dsh-mcp-client'\n  transport: stdio\n# - id: mcp-commented\n";
   assert.deepEqual(readServers(text).servers.map((server) => server.id), ['mcp-real']);
+});
+
+test('a client row with double quotes and a trailing comment is still listed', () => {
+  const text = '- id: mcp-real\n  name: "@deepseek-ai/dsh-mcp-client"  # bridged server\n  serverName: real\n';
+  assert.deepEqual(readServers(text).servers.map((server) => server.id), ['mcp-real']);
+});
+
+test('a same-prefix row that is not the MCP client is neither listed nor toggleable', () => {
+  const text = `- id: mcp-toggles
+  config:
+    descriptions:
+      example: '示例简介'
+`;
+  assert.deepEqual(readServers(text).servers, []);
+  const edit = setDisabled(text, 'mcp-toggles', true);
+  assert.equal(edit.ok, false);
+  assert.match(edit.error, /not an MCP client row/);
+  assert.equal(edit.text, text);
 });
 
 test('disabling inserts one line with the row indent and changes nothing else', () => {
@@ -116,9 +134,9 @@ test('enabling an already enabled row is a no-op', () => {
 });
 
 test('an explicit disabled: false is rewritten, not duplicated', () => {
-  const text = '- id: mcp-a\n  disabled: false\n  serverName: a\n';
+  const text = "- id: mcp-a\n  name: '@deepseek-ai/dsh-mcp-client'\n  disabled: false\n  serverName: a\n";
   const edit = setDisabled(text, 'mcp-a', true);
-  assert.equal(edit.text, '- id: mcp-a\n  disabled: true\n  serverName: a\n');
+  assert.equal(edit.text, "- id: mcp-a\n  name: '@deepseek-ai/dsh-mcp-client'\n  disabled: true\n  serverName: a\n");
   assert.equal(edit.text.split('disabled:').length - 1, 1);
 });
 
@@ -137,7 +155,7 @@ test('a group node is refused', () => {
 });
 
 test('an expression-valued disabled line is refused instead of corrupted', () => {
-  const text = '- id: mcp-expr\n  disabled: !!js "(() => true)()"\n  serverName: expr\n';
+  const text = "- id: mcp-expr\n  name: '@deepseek-ai/dsh-mcp-client'\n  disabled: !!js \"(() => true)()\"\n  serverName: expr\n";
   const edit = setDisabled(text, 'mcp-expr', false);
   assert.equal(edit.ok, false);
   assert.match(edit.error, /loader expression/);

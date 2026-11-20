@@ -9,7 +9,8 @@
  * Guarantees the rest of the plugin relies on:
  *   - line endings, a leading BOM, and the trailing newline survive an edit;
  *   - every byte outside the edited line is preserved verbatim;
- *   - group nodes (`name: cordis:group`) and rows whose `disabled:` is a loader
+ *   - group nodes (`name: cordis:group`), non-client `mcp-*` rows (such as this
+ *     plugin's own config row) and rows whose `disabled:` is a loader
  *     expression are reported, never silently rewritten.
  */
 
@@ -19,6 +20,9 @@ const ID_LINE_RE = /^(\s*)-\s+id:\s*/;
 const DISABLED_ANY_RE = /^\s*disabled:\s*/;
 const DISABLED_BOOL_RE = /^\s*disabled:\s*(true|false)\s*$/;
 const GROUP_RE = /name:\s*['"]?cordis:group/;
+// Only dsh-mcp-client rows are servers. The same profile file also holds this
+// plugin's own `mcp-toggles` config row, whose id happens to share the prefix.
+const CLIENT_RE = /^\s*name:\s*['"]?@deepseek-ai\/dsh-mcp-client['"]?\s*(?:#.*)?$/m;
 
 const isMcpRow = (id) => id.startsWith('mcp-');
 
@@ -73,11 +77,13 @@ export function findBlocks(lines) {
   return blocks;
 }
 
-/** Read one block into the shape the settings page renders, or null for a group. */
+/** Read one block into the shape the page renders, or null for a group or a non-client row. */
 export function parseBlock(lines, block) {
   const body = lines.slice(block.start, block.end);
   const text = body.join('\n');
   if (GROUP_RE.test(text)) return null;
+  // An `mcp-*` id alone is not enough: this plugin's own row uses that prefix.
+  if (!CLIENT_RE.test(text)) return null;
 
   const pick = (pattern) => {
     const match = text.match(pattern);
@@ -131,6 +137,9 @@ export function setDisabled(text, id, disabled) {
   const body = doc.lines.slice(block.start, block.end);
   if (GROUP_RE.test(body.join('\n'))) {
     return { ok: false, changed: false, text, error: `group node, not a server: ${id}` };
+  }
+  if (!CLIENT_RE.test(body.join('\n'))) {
+    return { ok: false, changed: false, text, error: `not an MCP client row: ${id}` };
   }
 
   const offset = body.findIndex((line) => DISABLED_ANY_RE.test(line));

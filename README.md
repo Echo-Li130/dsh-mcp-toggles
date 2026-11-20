@@ -2,19 +2,23 @@
 
 [English](README.en.md) | 中文
 
-> 在 DeepSeek Harness 的**设置**里，把已经写好的 MCP 服务器一个个开关。
-> 它只改那一行的 `disabled`，你的 profile 补丁其余部分**逐字节不动**。
+> 在 DeepSeek Harness 的**左侧导航栏**里，把已经写好的 MCP 服务器一个个开关。
+> 每个服务器带一句中文简介；开关只改那一行的 `disabled`，你的 profile 补丁其余部分**逐字节不动**。
 
 ![CI](https://github.com/Echo-Li130/dsh-mcp-toggles/actions/workflows/ci.yml/badge.svg)
 
-![MCP 连接器页面：三行示例服务器，两个已启用、一个已停用](docs/screenshot-toggles.png)
+![1.0.x 设置页示意：三行示例服务器，两个已启用、一个已停用](docs/screenshot-toggles.png)
 
-> 界面实拍；数据为示例，不含任何本机路径或凭据。
+> 1.0.x 的设置页截图；1.1 起入口移到左侧导航栏，列表改为带一句简介的卡片。数据为示例，不含任何本机路径或凭据。
 
 ## 它是什么
 
-装好之后，「设置」里会多出一页 **MCP 连接器**（英文界面是 *MCP connector toggles*），
-把当前 profile 补丁里所有 `- id: mcp-*` 的 loader 行列成一张表，每行一个开关。
+装好之后，左侧导航栏会出现 **MCP 连接器**，位置在「插件」与「自动化任务」之间；折叠成图标栏时是一个插头图标。
+页面把当前 profile 补丁里所有 `name: '@deepseek-ai/dsh-mcp-client'` 且 id 以 `mcp-` 开头的 loader 行列成卡片，每张卡片有：
+
+- 服务器名、行 id、传输方式与当前工具数量；
+- 一句中文功能简介（来自本插件的 `descriptions` 配置，见下一节）；
+- 一个开关。
 
 | 操作 | 实际发生的事 |
 |---|---|
@@ -54,6 +58,20 @@
 
 写成 `- id: example`（不带 `mcp-` 前缀）就不会被识别——插件不靠猜判断哪一行是 MCP。
 
+## 给 MCP 写一句中文简介
+
+简介是本插件的配置，不是从服务器抓来的。在 profile 补丁里用同一个 id 覆盖本插件的行，键是 `serverName`：
+
+```yaml
+- id: mcp-toggles
+  config:
+    descriptions:
+      example: '示例服务器：一句话说明它负责什么。'
+```
+
+没有配置的服务器显示通用说明 + 当前工具数量；配置缺失或格式不对不会影响开关。
+改完由 profile 补丁热重载生效，页面会在十几秒内刷新；没变化就手动刷新一下。
+
 ## 安装
 
 需要已有的 DeepSeek Harness（已在 **0.2.2-rc.3** 上验证，声明兼容 `0.2.x`）。
@@ -73,16 +91,16 @@ npm pack
 dsh plugin --profile <profile> add ./dsh-mcp-toggles-<version>.tgz
 ```
 
-装完刷新页面，「设置」里就会出现 **MCP 连接器**。
+装完刷新页面，左侧导航栏（「插件」与「自动化任务」之间）就会出现 **MCP 连接器**。
 
 ## 使用
 
-1. 打开 **设置 → MCP 连接器**
+1. 打开左侧导航栏的 **MCP 连接器**
 2. 页面顶部显示它管理的文件路径——确认是你想改的那份 profile 补丁
 3. 点任意开关；页面上会提示「约 2 秒生效」
 4. 2 秒后新会话的工具列表里，该服务器的工具就应该出现 / 消失
 
-如果设置页没有出现这个入口，可以直接打开：
+如果左侧栏没有出现这个入口，可以直接打开：
 
 ```
 http://127.0.0.1:<DSH 端口>/mcp-toggles
@@ -100,7 +118,7 @@ http://127.0.0.1:<DSH 端口>/mcp-toggles
 
 ## 兼容与边界
 
-- 只在 **Web / Desktop** 的 Harness 里有意义（它依赖 `webServer` 与设置页插槽）
+- 只在 **Web / Desktop** 的 Harness 里有意义（它依赖 `webServer`、侧栏 `sidebar.panellist` 与主面板 `main` 插槽）
 - 组节点（`name: cordis:group`）不会出现在列表里；如果某一行的 `disabled` 是 `!!js` 表达式，开关会**拒绝改动**并提示手动处理，而不是冒险改坏文件
 - 换行符（CRLF / LF）、UTF-8 BOM、末尾换行都会原样保留
 

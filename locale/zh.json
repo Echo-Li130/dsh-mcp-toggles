@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "MCP 连接器",
-    "description": "在「设置 → MCP 连接器」里开关已有的 MCP 服务器：每个开关只改该行在 profile 补丁里的 disabled 字段，停用时插入一行、启用时删掉那一行，文件其余内容逐字节不动；改动经热重载约 2 秒生效。只列出同一个文件里 - id: mcp-* 的 loader 行，不含 mcp-manager 的 servers 映射与其他补丁层。不发起任何网络请求，也不读取凭据。停用后该服务器的工具会从模型的工具列表中消失。",
+    "description": "在左侧导航栏的「MCP 连接器」（插件与自动化任务之间）里开关已有的 MCP 服务器：每个开关只改该行在 profile 补丁里的 disabled 字段，停用时插入一行、启用时删掉那一行，文件其余内容逐字节不动；改动经热重载约 2 秒生效。每个服务器显示一行简短中文简介，可在 profile 补丁的 descriptions 里按 serverName 自定义，没有配置时显示通用说明与当前工具数量。只列出同一个文件里 - id: mcp-* 的 loader 行，不含 mcp-manager 的 servers 映射与其他补丁层。不发起任何网络请求，也不读取凭据。停用后该服务器的工具会从模型的工具列表中消失。",
     "detail": "docs/DETAIL.zh.md"
   }
 }

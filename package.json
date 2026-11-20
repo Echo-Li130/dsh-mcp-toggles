@@ -1,8 +1,8 @@
 {
   "name": "dsh-mcp-toggles",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
-  "description": "Switch existing MCP loader rows on or off from DeepSeek Harness Settings, editing only that row's disabled line and leaving the rest of the profile patch byte-for-byte intact.",
+  "description": "MCP connector switches as a sidebar panel in DeepSeek Harness: the profile's mcp-* loader rows, a one-line intro per server, and a switch that edits only that row's disabled line.",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -43,7 +43,7 @@
     "icon.svg"
   ],
   "scripts": {
-    "test": "node --test test/patch.test.mjs test/http.test.mjs",
+    "test": "node --test test/patch.test.mjs test/http.test.mjs test/describe.test.mjs test/client.test.mjs",
     "validate": "node scripts/validate.mjs",
     "privacy-check": "node scripts/privacy-check.mjs",
     "prepack": "node scripts/validate.mjs"
@@ -57,8 +57,8 @@
       "immediately": true,
       "inject": [
         "@deepseek-ai/dsh-client-locale",
-        "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-client-ui-theme"
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-layout"
       ]
     }
   }

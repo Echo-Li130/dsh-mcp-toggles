@@ -1,9 +1,10 @@
 /**
- * The three HTTP handlers behind the settings page.
+ * The three HTTP handlers behind the sidebar page.
  *
  * They are HTTP-shaped but harness-free: the caller injects how to find the
- * patch and how to serialise writes, which is what lets the tests drive them
- * with fake requests.
+ * patch, how to serialise writes, and how to enrich a row (one-line
+ * introduction plus tool count), which is what lets the tests drive them with
+ * fake requests.
  *
  * Every route answers loopback callers only: the socket address must be a
  * loopback address *and* the `Host` header must name localhost, so a page that
@@ -53,12 +54,16 @@ export function readBody(req, limit = MAX_BODY) {
 
 const messageOf = (error) => String((error && error.message) || error);
 
-export function createHandlers({ findConfigPath, serial, panelFile }) {
+export function createHandlers({ findConfigPath, serial, panelFile, enrich = () => ({}) }) {
   /** Read the patch fresh: a row added by any other tool shows up on the next call. */
   const snapshot = () => {
     const file = findConfigPath();
     if (!file) return { ok: false, error: 'profile patch not found' };
-    return { ok: true, configPath: file, servers: readServers(fs.readFileSync(file, 'utf8')).servers };
+    const servers = readServers(fs.readFileSync(file, 'utf8')).servers.map((server) => ({
+      ...server,
+      ...enrich(server),
+    }));
+    return { ok: true, configPath: file, servers };
   };
 
   return {
@@ -102,7 +107,10 @@ export function createHandlers({ findConfigPath, serial, panelFile }) {
             fs.writeFileSync(tmp, edit.text, 'utf8');
             fs.renameSync(tmp, file);
           }
-          const servers = readServers(fs.readFileSync(file, 'utf8')).servers;
+          const servers = readServers(fs.readFileSync(file, 'utf8')).servers.map((server) => ({
+            ...server,
+            ...enrich(server),
+          }));
           return {
             ok: true,
             changed: edit.changed,
@@ -111,7 +119,11 @@ export function createHandlers({ findConfigPath, serial, panelFile }) {
           };
         });
 
-        return sendJson(res, result.ok ? 200 : 400, result);
+        // A refused edit carries the whole patched document internally; never
+        // echo it back (it can hold local paths), only the reason.
+        return sendJson(res, result.ok ? 200 : 400, result.ok
+          ? result
+          : { ok: false, changed: false, error: result.error });
       } catch (error) {
         return sendJson(res, 400, { ok: false, error: messageOf(error) });
       }

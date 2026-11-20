@@ -2,19 +2,23 @@
 
 English | [中文](README.md)
 
-> Flip the MCP servers you already configured on and off from **Settings** in DeepSeek Harness.
-> Only that row's `disabled` field changes — the rest of your profile patch stays **byte-for-byte** intact.
+> Flip the MCP servers you already configured on and off from the **left sidebar** in DeepSeek Harness.
+> Each server carries a one-line intro; only that row's `disabled` field changes — the rest of your profile patch stays **byte-for-byte** intact.
 
 ![CI](https://github.com/Echo-Li130/dsh-mcp-toggles/actions/workflows/ci.yml/badge.svg)
 
-![The MCP connector toggles page: three example servers, two on and one off](docs/screenshot-toggles.en.png)
+![The 1.0.x Settings page: three example servers, two on and one off](docs/screenshot-toggles.en.png)
 
-> Screenshot of the real page; the data is an example — no local path or credential appears here.
+> A 1.0.x screenshot of the Settings page; from 1.1 the entry lives in the left sidebar and the list is a set of cards with a one-line intro. The data is an example — no local path or credential appears here.
 
 ## What it does
 
-Once installed, Settings gains a **MCP connector toggles** page. It lists every
-`- id: mcp-*` loader row from the active profile patch, one switch per server.
+Once installed, the left sidebar gains **MCP connector toggles**, between *Plugins* and *Automation tasks* (a plug glyph in the collapsed rail). It lists every
+`name: '@deepseek-ai/dsh-mcp-client'` loader row whose id starts with `mcp-` as a card with:
+
+- the server name, row id, transport, and current tool count;
+- a one-line intro (from this plugin's `descriptions` config — see the next section);
+- one switch.
 
 | Action | What actually happens |
 |---|---|
@@ -57,6 +61,19 @@ Three conditions must hold:
 An id without the `mcp-` prefix (for example `- id: example`) is not listed: the
 plugin does not guess which rows are MCP servers.
 
+## Write a one-line intro for a server
+
+The intro is this plugin's own configuration, not data fetched from the server. Override the plugin's row in the profile patch, keyed by `serverName`:
+
+```yaml
+- id: mcp-toggles
+  config:
+    descriptions:
+      example: 'Example server: one sentence on what it is for.'
+```
+
+A server without an entry shows a generic line plus its current tool count; a missing or malformed entry never affects the switches. The profile patch hot-reloads the change, and the page refreshes within seconds; reload it if nothing changes.
+
 ## Install
 
 Requires DeepSeek Harness (verified on **0.2.2-rc.3**; declares `0.2.x`).
@@ -76,16 +93,16 @@ npm pack
 dsh plugin --profile <profile> add ./dsh-mcp-toggles-<version>.tgz
 ```
 
-Reload the page and the entry is in **Settings**.
+Reload the page and the entry is in the left sidebar, between **Plugins** and **Automation tasks**.
 
 ## Use
 
-1. Open **Settings → MCP connector toggles**
+1. Open **MCP connector toggles** in the left sidebar
 2. The page shows which file it manages — check it is the profile patch you mean
 3. Flip a switch; the page reports that it applies in about two seconds
 4. Two seconds later the server's tools appear in (or leave) a new session's tool list
 
-If the Settings entry is missing, open this instead:
+If the sidebar entry is missing, open this instead:
 
 ```
 http://127.0.0.1:<port>/mcp-toggles
@@ -107,7 +124,7 @@ Same API, same behaviour.
 ## Compatibility and limits
 
 - Meant for the Web / Desktop harness (it uses the `webServer` service and the
-  settings slots).
+  `sidebar.panellist` and `main` slots).
 - Group nodes (`name: cordis:group`) are not listed. If a row's `disabled` is a
   `!!js` expression, the switch **refuses** to change it and asks you to edit it
   by hand rather than risk corrupting the file.

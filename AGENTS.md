@@ -1,8 +1,9 @@
 # For agents installing this plugin
 
 `dsh-mcp-toggles` is a DeepSeek Harness bundle: a Host half (`index.js`) that
-registers three HTTP routes, and a Client half (`client.js`) that adds one page
-to Settings. It has no dependencies and no build step.
+registers three HTTP routes, and a Client half (`client.js`) that adds one global
+panel to the left sidebar (between Plugins and Automation tasks). It has no
+dependencies and no build step.
 
 ## Install
 
@@ -11,7 +12,7 @@ plugin_manager({ action: "install_bundle", target: "/absolute/path/to/dsh-mcp-to
 ```
 
 Or from the UI: **Plugins → Add plugin → pick the directory**. Then reload the
-page; the entry appears in **Settings → MCP connector toggles**.
+page; the entry appears in the left sidebar as **MCP connector toggles**.
 
 ## Verify
 
@@ -21,8 +22,15 @@ page; the entry appears in **Settings → MCP connector toggles**.
    server's tools should leave and rejoin the model's tool list, and the
    `cordis.patch.yml` file should be byte-identical to before afterwards.
 
-Do not claim the settings page renders correctly without a human confirming it;
+Do not claim the sidebar panel or its intros render correctly without a human confirming it;
 slot registration alone does not prove what the user sees.
+
+## Intros
+
+A server's one-line intro comes from this plugin's own loader row:
+`config.descriptions[serverName]` in the profile patch. The API returns it as
+`servers[].description` plus `servers[].tools` (count and up to five raw tool
+names read from `ctx.tools`). A missing entry is a generic line, never an error.
 
 ## Pitfalls
 

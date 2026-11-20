@@ -78,7 +78,7 @@ for (const entry of pkg.files || []) {
   check(expand(entry).length > 0, `files entry resolves: ${entry}`);
 }
 
-for (const runtime of ['index.js', 'client.js', 'src/patch.mjs', 'src/profile.mjs', 'src/routes.mjs', 'public/panel.html']) {
+for (const runtime of ['index.js', 'client.js', 'src/patch.mjs', 'src/profile.mjs', 'src/routes.mjs', 'src/describe.mjs', 'public/panel.html']) {
   check(exists(runtime), `runtime file exists: ${runtime}`);
 }
 
